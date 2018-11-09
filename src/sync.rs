@@ -73,8 +73,11 @@ impl DNSClient {
             let _ = stream.set_write_timeout(Some(self.upstream_server_timeout));
             let _ = stream.set_nodelay(true);
             let query_len = query.len();
-            stream.write_all(&[(query_len >> 8) as u8, query_len as u8])?;
-            stream.write_all(query)?;
+            let mut tcp_query = Vec::with_capacity(2 + query_len);
+            tcp_query.push((query_len >> 8) as u8);
+            tcp_query.push(query_len as u8);
+            tcp_query.extend_from_slice(query);
+            stream.write_all(&tcp_query)?;
             let mut response_len_bytes = [0u8; 2];
             stream.read_exact(&mut response_len_bytes)?;
             let response_len =
