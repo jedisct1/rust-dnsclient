@@ -46,7 +46,7 @@ impl DNSClient {
             SocketAddr::V4(_) => &self.local_v4_addr,
             SocketAddr::V6(_) => &self.local_v6_addr,
         };
-        let parsed_response = {
+        let mut parsed_response = {
             let socket = UdpSocket::bind(local_addr)?;
             let _ = socket.set_read_timeout(Some(Duration::new(5, 0)));
             socket.connect(upstream_server.addr)?;
@@ -56,22 +56,15 @@ impl DNSClient {
                 .recv(&mut response)
                 .map_err(|_| io::Error::new(io::ErrorKind::WouldBlock, "Timeout"))?;
             response.truncate(response_len);
-            let mut parsed_response = DNSSector::new(response)
+            DNSSector::new(response)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
                 .parse()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
-            if parsed_response.tid() != query_tid || &parsed_response.question() != query_question {
-                Err(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "Unexpected response",
-                ))?
-            }
-            parsed_response
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
         };
         if parsed_response.flags() & DNS_FLAG_TC == 0 {
             return Ok(parsed_response);
         }
-        let parsed_response = {
+        parsed_response = {
             let mut stream = TcpStream::connect(upstream_server.addr)?;
             let _ = stream.set_read_timeout(Some(self.upstream_server_timeout));
             let query_len = query.len();
@@ -83,12 +76,17 @@ impl DNSClient {
                 ((response_len_bytes[0] as usize) << 8) | (response_len_bytes[1] as usize);
             let mut response = vec![0; response_len];
             stream.read_exact(&mut response)?;
-            let parsed_response = DNSSector::new(response)
+            DNSSector::new(response)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
                 .parse()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
-            parsed_response
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
         };
+        if parsed_response.tid() != query_tid || &parsed_response.question() != query_question {
+            Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "Unexpected response",
+            ))?
+        }
         Ok(parsed_response)
     }
 
