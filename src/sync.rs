@@ -47,6 +47,7 @@ impl DNSClient {
             SocketAddr::V6(_) => &self.local_v6_addr,
         };
         let mut parsed_response = {
+            // UDP
             let socket = UdpSocket::bind(local_addr)?;
             let _ = socket.set_read_timeout(Some(Duration::new(5, 0)));
             socket.connect(upstream_server.addr)?;
@@ -65,8 +66,12 @@ impl DNSClient {
             return Ok(parsed_response);
         }
         parsed_response = {
-            let mut stream = TcpStream::connect(upstream_server.addr)?;
+            // TCP
+            let mut stream =
+                TcpStream::connect_timeout(&upstream_server.addr, self.upstream_server_timeout)?;
             let _ = stream.set_read_timeout(Some(self.upstream_server_timeout));
+            let _ = stream.set_write_timeout(Some(self.upstream_server_timeout));
+            let _ = stream.set_nodelay(true);
             let query_len = query.len();
             stream.write_all(&[(query_len >> 8) as u8, query_len as u8])?;
             stream.write_all(query)?;
