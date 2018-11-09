@@ -1,0 +1,14 @@
+[package]
+name = "dnsclient"
+version = "0.1.0"
+description = "A small, simple and secure DNS client library"
+authors = ["Frank Denis <github@pureftpd.org>"]
+keywords = ["dns", "client"]
+license = "ISC"
+homepage = "https://github.com/jedisct1/rust-dnsclient"
+repository = "https://github.com/jedisct1/rust-dnsclient"
+categories = ["os::unix-apis"]
+
+[dependencies]
+dnssector = "0.1"
+rand = "0.5"
