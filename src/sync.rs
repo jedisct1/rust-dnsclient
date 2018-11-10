@@ -6,6 +6,7 @@ use std::io::{self, Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpStream, UdpSocket};
 use std::time::Duration;
 
+#[derive(Clone, Debug)]
 pub struct DNSClient {
     upstream_server_timeout: Duration,
     upstream_servers: Vec<UpstreamServer>,

@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+#[derive(Clone, Debug)]
 pub struct UpstreamServer {
     pub addr: SocketAddr,
 }
