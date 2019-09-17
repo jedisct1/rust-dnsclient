@@ -50,9 +50,10 @@ impl DNSClient {
             SocketAddr::V4(_) => &self.local_v4_addr,
             SocketAddr::V6(_) => &self.local_v6_addr,
         };
-        let mut parsed_response = {
-            // UDP
+        // UDP
+        let response = async_std::io::timeout(self.upstream_server_timeout, async {
             let socket = UdpSocket::bind(local_addr).await?;
+
             socket.connect(upstream_server.addr).await?;
             socket.send(&query).await?;
             let mut response = vec![0; DNS_MAX_COMPRESSED_SIZE];
@@ -61,33 +62,39 @@ impl DNSClient {
                 .await
                 .map_err(|_| io::Error::new(io::ErrorKind::WouldBlock, "Timeout"))?;
             response.truncate(response_len);
-            DNSSector::new(response)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
-                .parse()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
-        };
+            Ok(response)
+        })
+        .await?;
+        let mut parsed_response = DNSSector::new(response)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
+            .parse()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
         if parsed_response.flags() & DNS_FLAG_TC == DNS_FLAG_TC {
             parsed_response = {
                 // TCP
-                let mut stream = TcpStream::connect(&upstream_server.addr).await?;
-                let _ = stream.set_nodelay(true);
-                let query_len = query.len();
-                let mut tcp_query = Vec::with_capacity(2 + query_len);
-                tcp_query.push((query_len >> 8) as u8);
-                tcp_query.push(query_len as u8);
-                tcp_query.extend_from_slice(query);
-                stream.write_all(&tcp_query).await?;
-                let mut response_len_bytes = [0u8; 2];
-                stream.read_exact(&mut response_len_bytes).await?;
-                let response_len =
-                    ((response_len_bytes[0] as usize) << 8) | (response_len_bytes[1] as usize);
-                let mut response = vec![0; response_len];
-                stream.read_exact(&mut response).await?;
+                let response = async_std::io::timeout(self.upstream_server_timeout, async {
+                    let mut stream = TcpStream::connect(&upstream_server.addr).await?;
+                    let _ = stream.set_nodelay(true);
+                    let query_len = query.len();
+                    let mut tcp_query = Vec::with_capacity(2 + query_len);
+                    tcp_query.push((query_len >> 8) as u8);
+                    tcp_query.push(query_len as u8);
+                    tcp_query.extend_from_slice(query);
+                    stream.write_all(&tcp_query).await?;
+                    let mut response_len_bytes = [0u8; 2];
+                    stream.read_exact(&mut response_len_bytes).await?;
+                    let response_len =
+                        ((response_len_bytes[0] as usize) << 8) | (response_len_bytes[1] as usize);
+                    let mut response = vec![0; response_len];
+                    stream.read_exact(&mut response).await?;
+                    Ok(response)
+                })
+                .await?;
                 DNSSector::new(response)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
                     .parse()
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
-            }
+            };
         }
         if parsed_response.tid() != query_tid || &parsed_response.question() != query_question {
             return Err(io::Error::new(
