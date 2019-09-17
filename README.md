@@ -19,4 +19,4 @@ It also transparently falls back to TCP when a truncated response is received.
 
 Finally, its API couldn't be any simpler.
 
-DNSClient comes with a synchronous interface (`sync::*`) as well as a `std::future`-based asynchronous interface (`async::*`) that can be enabled with the `async` feature flag.
+DNSClient comes with a synchronous interface (`sync::*`) as well as a `std::future`-based asynchronous interface (`async::*`).
