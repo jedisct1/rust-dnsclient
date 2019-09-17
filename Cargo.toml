@@ -10,7 +10,10 @@ repository = "https://github.com/jedisct1/rust-dnsclient"
 categories = ["os::unix-apis"]
 edition = "2018"
 
+[features]
+async = ["async-std"]
+
 [dependencies]
-async-std = "0.99"
+async-std = { version = "0.99", default-features = false, optional = true }
 dnssector = "0.1"
 rand = "0.7"
