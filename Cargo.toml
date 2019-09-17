@@ -8,7 +8,9 @@ license = "ISC"
 homepage = "https://github.com/jedisct1/rust-dnsclient"
 repository = "https://github.com/jedisct1/rust-dnsclient"
 categories = ["os::unix-apis"]
+edition = "2018"
 
 [dependencies]
+async-std = "0.99"
 dnssector = "0.1"
 rand = "0.7"
