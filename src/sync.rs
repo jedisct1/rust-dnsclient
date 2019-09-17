@@ -92,10 +92,10 @@ impl DNSClient {
             }
         }
         if parsed_response.tid() != query_tid || &parsed_response.question() != query_question {
-            Err(io::Error::new(
+            return Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
                 "Unexpected response",
-            ))?
+            ));
         }
         Ok(parsed_response)
     }
@@ -107,10 +107,10 @@ impl DNSClient {
         let query_tid = parsed_query.tid();
         let query_question = parsed_query.question();
         if query_question.is_none() || parsed_query.flags() & DNS_FLAG_QR != 0 {
-            Err(io::Error::new(
+            return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "No DNS question",
-            ))?
+            ));
         }
         let valid_query = parsed_query.into_packet();
         for upstream_server in &self.upstream_servers {
@@ -126,7 +126,7 @@ impl DNSClient {
         Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "No response received from any servers",
-        ))?
+        ))
     }
 
     pub fn query_raw(&self, query: &[u8], tid_masking: bool) -> Result<Vec<u8>, io::Error> {
