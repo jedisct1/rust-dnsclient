@@ -178,6 +178,27 @@ impl DNSClient {
         Ok(ips)
     }
 
+    pub async fn query_txt(&self, name: &str) -> Result<Vec<String>, io::Error> {
+        let parsed_query = dnssector::gen::query(
+            name.as_bytes(),
+            Type::TXT,
+            Class::IN,
+        )
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let mut parsed_response = self.query_from_parsed_query(parsed_query).await?;
+        let mut txts = vec![];
+        {
+            let mut it = parsed_response.into_iter_answer();
+            while let Some(item) = it {
+                if let Ok(s) = item.rr_txt() {
+                    txts.push(s);
+                }
+                it = item.next();
+            }
+        }
+        Ok(txts)
+    }
+
     pub async fn query_aaaa(&self, name: &str) -> Result<Vec<Ipv6Addr>, io::Error> {
         let parsed_query = dnssector::gen::query(
             name.as_bytes(),
