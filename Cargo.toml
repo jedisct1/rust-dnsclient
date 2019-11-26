@@ -1,6 +1,6 @@
 [package]
 name = "dnsclient"
-version = "0.1.4"
+version = "0.1.5"
 description = "A small, simple and secure DNS client library"
 authors = ["Frank Denis <github@pureftpd.org>"]
 keywords = ["dns", "client"]
@@ -11,7 +11,7 @@ categories = ["os::unix-apis"]
 edition = "2018"
 
 [dependencies]
-async-std = "0.99"
+async-std = "1.1"
 dnssector = "0.1"
 rand = "0.7"
-rustversion = "0.1"
+rustversion = "1.0"
