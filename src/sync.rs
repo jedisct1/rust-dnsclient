@@ -1,6 +1,6 @@
-use super::dnssector::constants::{Class, Type, DNS_MAX_COMPRESSED_SIZE};
-use super::dnssector::*;
-use super::upstream_server::UpstreamServer;
+use crate::upstream_server::UpstreamServer;
+use dnssector::constants::{Class, Type, DNS_MAX_COMPRESSED_SIZE};
+use dnssector::*;
 use rand::Rng;
 use std::io::{self, Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpStream, UdpSocket};
