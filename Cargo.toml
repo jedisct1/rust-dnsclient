@@ -11,7 +11,10 @@ categories = ["os::unix-apis"]
 edition = "2018"
 
 [dependencies]
-async-std = "1"
+async-std = { version = "1", optional = true }
 dnssector = "0.2"
 rand = "0.7"
-rustversion = "1.0"
+
+[features]
+async = [ "async-std" ]
+default = [ "async" ]

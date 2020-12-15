@@ -1,6 +1,4 @@
-#![feature(proc_macro_hygiene)]
-
-#[rustversion::since(1.38)]
+#[cfg(feature = "async")]
 pub mod r#async;
 pub mod sync;
 mod upstream_server;
