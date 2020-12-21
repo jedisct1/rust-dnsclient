@@ -13,7 +13,7 @@ edition = "2018"
 [dependencies]
 async-std = { version = "1", optional = true }
 dnssector = "0.2"
-rand = "0.7"
+rand = "0.8"
 
 [features]
 async = [ "async-std" ]
