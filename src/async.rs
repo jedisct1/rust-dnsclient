@@ -55,7 +55,7 @@ impl DNSClient {
             let socket = UdpSocket::bind(local_addr).await?;
 
             socket.connect(upstream_server.addr).await?;
-            socket.send(&query).await?;
+            socket.send(query).await?;
             let mut response = vec![0; DNS_MAX_COMPRESSED_SIZE];
             let response_len = socket
                 .recv(&mut response)

@@ -52,7 +52,7 @@ impl DNSClient {
             let socket = UdpSocket::bind(local_addr)?;
             let _ = socket.set_read_timeout(Some(Duration::new(5, 0)));
             socket.connect(upstream_server.addr)?;
-            socket.send(&query)?;
+            socket.send(query)?;
             let mut response = vec![0; DNS_MAX_COMPRESSED_SIZE];
             let response_len = socket
                 .recv(&mut response)
