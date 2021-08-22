@@ -36,6 +36,56 @@ impl DNSClient {
         self.local_v6_addr = addr.into()
     }
 
+    fn dns_exchange_udp(
+        &self,
+        local_addr: &SocketAddr,
+        upstream_server: &UpstreamServer,
+        query: &[u8],
+    ) -> io::Result<Vec<u8>> {
+        let socket = UdpSocket::bind(local_addr)?;
+        let _ = socket.set_read_timeout(Some(self.upstream_server_timeout));
+        socket.connect(upstream_server.addr)?;
+        socket.send(query)?;
+        let mut response = vec![0; DNS_MAX_COMPRESSED_SIZE];
+        let response_len = socket
+            .recv(&mut response)
+            .map_err(|_| io::Error::new(io::ErrorKind::WouldBlock, "Timeout"))?;
+        response.truncate(response_len);
+        Ok(response)
+    }
+
+    fn dns_exchange_tcp(
+        &self,
+        _local_addr: &SocketAddr,
+        upstream_server: &UpstreamServer,
+        query: &[u8],
+    ) -> io::Result<Vec<u8>> {
+        let mut stream =
+            TcpStream::connect_timeout(&upstream_server.addr, self.upstream_server_timeout)?;
+        let _ = stream.set_read_timeout(Some(self.upstream_server_timeout));
+        let _ = stream.set_write_timeout(Some(self.upstream_server_timeout));
+        let _ = stream.set_nodelay(true);
+        let query_len = query.len();
+        let mut tcp_query = Vec::with_capacity(2 + query_len);
+        tcp_query.push((query_len >> 8) as u8);
+        tcp_query.push(query_len as u8);
+        tcp_query.extend_from_slice(query);
+        stream.write_all(&tcp_query)?;
+        let mut response_len_bytes = [0u8; 2];
+        stream.read_exact(&mut response_len_bytes)?;
+        let response_len =
+            ((response_len_bytes[0] as usize) << 8) | (response_len_bytes[1] as usize);
+        if response_len > DNS_MAX_COMPRESSED_SIZE {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Response too large",
+            ));
+        }
+        let mut response = vec![0; response_len];
+        stream.read_exact(&mut response)?;
+        Ok(response)
+    }
+
     fn send_query_to_upstream_server(
         &self,
         upstream_server: &UpstreamServer,
@@ -48,16 +98,7 @@ impl DNSClient {
             SocketAddr::V6(_) => &self.local_v6_addr,
         };
         let mut parsed_response = {
-            // UDP
-            let socket = UdpSocket::bind(local_addr)?;
-            let _ = socket.set_read_timeout(Some(Duration::new(5, 0)));
-            socket.connect(upstream_server.addr)?;
-            socket.send(query)?;
-            let mut response = vec![0; DNS_MAX_COMPRESSED_SIZE];
-            let response_len = socket
-                .recv(&mut response)
-                .map_err(|_| io::Error::new(io::ErrorKind::WouldBlock, "Timeout"))?;
-            response.truncate(response_len);
+            let response = self.dns_exchange_udp(local_addr, upstream_server, query)?;
             DNSSector::new(response)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
                 .parse()
@@ -65,26 +106,7 @@ impl DNSClient {
         };
         if parsed_response.flags() & DNS_FLAG_TC == DNS_FLAG_TC {
             parsed_response = {
-                // TCP
-                let mut stream = TcpStream::connect_timeout(
-                    &upstream_server.addr,
-                    self.upstream_server_timeout,
-                )?;
-                let _ = stream.set_read_timeout(Some(self.upstream_server_timeout));
-                let _ = stream.set_write_timeout(Some(self.upstream_server_timeout));
-                let _ = stream.set_nodelay(true);
-                let query_len = query.len();
-                let mut tcp_query = Vec::with_capacity(2 + query_len);
-                tcp_query.push((query_len >> 8) as u8);
-                tcp_query.push(query_len as u8);
-                tcp_query.extend_from_slice(query);
-                stream.write_all(&tcp_query)?;
-                let mut response_len_bytes = [0u8; 2];
-                stream.read_exact(&mut response_len_bytes)?;
-                let response_len =
-                    ((response_len_bytes[0] as usize) << 8) | (response_len_bytes[1] as usize);
-                let mut response = vec![0; response_len];
-                stream.read_exact(&mut response)?;
+                let response = self.dns_exchange_tcp(local_addr, upstream_server, query)?;
                 DNSSector::new(response)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
                     .parse()
