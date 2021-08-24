@@ -236,7 +236,11 @@ impl DNSClient {
             IpAddr::V6(ip) => {
                 let mut octets = ip.octets();
                 octets.reverse();
-                let rev = octets.map(|x| x.to_string()).join(".");
+                let rev = octets
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join(".");
                 format!("{}.ip6.arpa", rev)
             }
         };
