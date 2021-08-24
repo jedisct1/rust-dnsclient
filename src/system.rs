@@ -22,7 +22,7 @@ pub fn default_resolvers() -> Result<Vec<UpstreamServer>, io::Error> {
                 Ok(ip) => ip,
                 _ => continue,
             };
-            let addr = SocketAddr::new(ip.into(), 53);
+            let addr = SocketAddr::new(ip, 53);
             let upstream_server = UpstreamServer::new(addr);
             upstream_servers.push(upstream_server);
         }
