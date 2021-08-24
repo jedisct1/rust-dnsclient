@@ -190,22 +190,24 @@ impl DNSClient {
 
     /// Return TXT records.
     pub fn query_txt(&self, name: &str) -> Result<Vec<Vec<u8>>, io::Error> {
-        let parsed_query = dnssector::gen::query(
-            name.as_bytes(),
-            Type::from_string("TXT").unwrap(),
-            Class::from_string("IN").unwrap(),
-        )
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let rr_class = Class::from_string("IN").unwrap();
+        let rr_type = Type::from_string("TXT").unwrap();
+        let parsed_query = dnssector::gen::query(name.as_bytes(), rr_type, rr_class)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
         let mut parsed_response = self.query_from_parsed_query(parsed_query)?;
         let mut txts: Vec<Vec<u8>> = vec![];
 
         let mut it = parsed_response.into_iter_answer();
         while let Some(item) = it {
+            if item.rr_class() != rr_class.into() || item.rr_type() != rr_type.into() {
+                it = item.next();
+                continue;
+            }
             if let Ok(RawRRData::Data(data)) = item.rr_rd() {
                 let mut txt = vec![];
                 let mut it = data.iter();
-                while let Some(len) = it.next() {
-                    for _ in 0..*len {
+                while let Some(&len) = it.next() {
+                    for _ in 0..len {
                         txt.push(*it.next().ok_or_else(|| {
                             io::Error::new(io::ErrorKind::InvalidInput, "Invalid text record")
                         })?)
@@ -216,6 +218,62 @@ impl DNSClient {
             it = item.next();
         }
         Ok(txts)
+    }
+
+    /// Reverse IP lookup.
+    pub fn query_ptr(&self, ip: &IpAddr) -> Result<Vec<String>, io::Error> {
+        let rr_class = Class::from_string("IN").unwrap();
+        let rr_type = Type::from_string("PTR").unwrap();
+        let rev_name = match ip {
+            IpAddr::V4(ip) => {
+                let mut octets = ip.octets();
+                octets.reverse();
+                format!(
+                    "{}.{}.{}.{}.in-addr.arpa",
+                    octets[0], octets[1], octets[2], octets[3]
+                )
+            }
+            IpAddr::V6(ip) => {
+                let mut octets = ip.octets();
+                octets.reverse();
+                let rev = octets.map(|x| x.to_string()).join(".");
+                format!("{}.ip6.arpa", rev)
+            }
+        };
+        let parsed_query = dnssector::gen::query(rev_name.as_bytes(), rr_type, rr_class)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let mut parsed_response = self.query_from_parsed_query(parsed_query)?;
+        let mut names: Vec<String> = vec![];
+
+        let mut it = parsed_response.into_iter_answer();
+        while let Some(item) = it {
+            if item.rr_class() != rr_class.into() || item.rr_type() != rr_type.into() {
+                it = item.next();
+                continue;
+            }
+            if let Ok(RawRRData::Data(data)) = item.rr_rd() {
+                let mut name = vec![];
+                let mut it = data.iter();
+                while let Some(&len) = it.next() {
+                    if len != 0 && !name.is_empty() {
+                        name.push(b'.');
+                    }
+                    for _ in 0..len {
+                        name.push(*it.next().ok_or_else(|| {
+                            io::Error::new(io::ErrorKind::InvalidInput, "Invalid text record")
+                        })?)
+                    }
+                }
+                if name.is_empty() {
+                    name.push(b'.');
+                }
+                if let Ok(name) = String::from_utf8(name) {
+                    names.push(name)
+                }
+            }
+            it = item.next();
+        }
+        Ok(names)
     }
 
     /// Return the raw record data for the given query type.
@@ -236,6 +294,10 @@ impl DNSClient {
 
         let mut it = parsed_response.into_iter_answer();
         while let Some(item) = it {
+            if item.rr_class() != rr_class.into() || item.rr_type() != rr_type.into() {
+                it = item.next();
+                continue;
+            }
             if let Ok(RawRRData::Data(data)) = item.rr_rd() {
                 raw_rrs.push(data.to_vec());
             }
@@ -258,4 +320,21 @@ fn test_query_a() {
     let dns_client = DNSClient::new(upstream_servers);
     let r = dns_client.query_a("one.one.one.one").unwrap();
     assert!(r.contains(&Ipv4Addr::new(1, 1, 1, 1)));
+}
+
+#[test]
+fn test_query_ptr() {
+    use std::str::FromStr;
+
+    let upstream_servers = crate::system::default_resolvers().unwrap_or_else(|_| {
+        vec![
+            UpstreamServer::new(SocketAddr::from_str("1.0.0.1:53").unwrap()),
+            UpstreamServer::new(SocketAddr::from_str("1.1.1.1:53").unwrap()),
+        ]
+    });
+    let dns_client = DNSClient::new(upstream_servers);
+    let r = dns_client
+        .query_ptr(&IpAddr::from_str("1.1.1.1").unwrap())
+        .unwrap();
+    assert_eq!(r[0], "one.one.one.one");
 }
