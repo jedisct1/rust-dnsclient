@@ -207,19 +207,17 @@ impl DNSClient {
 
         let mut it = parsed_response.into_iter_answer();
         while let Some(item) = it {
-            if let Ok(raw) = item.rr_rd() {
-                if let RawRRData::Data(data) = raw {
-                    let mut txt = vec![];
-                    let mut it = data.iter();
-                    while let Some(len) = it.next() {
-                        for _ in 0..*len {
-                            txt.push(*it.next().ok_or_else(|| {
-                                io::Error::new(io::ErrorKind::InvalidInput, "Invalid text record")
-                            })?)
-                        }
+            if let Ok(RawRRData::Data(data)) = item.rr_rd() {
+                let mut txt = vec![];
+                let mut it = data.iter();
+                while let Some(len) = it.next() {
+                    for _ in 0..*len {
+                        txt.push(*it.next().ok_or_else(|| {
+                            io::Error::new(io::ErrorKind::InvalidInput, "Invalid text record")
+                        })?)
                     }
-                    txts.push(txt);
                 }
+                txts.push(txt);
             }
             it = item.next();
         }
@@ -244,10 +242,8 @@ impl DNSClient {
 
         let mut it = parsed_response.into_iter_answer();
         while let Some(item) = it {
-            if let Ok(raw) = item.rr_rd() {
-                if let RawRRData::Data(data) = raw {
-                    raw_rrs.push(data.to_vec());
-                }
+            if let Ok(RawRRData::Data(data)) = item.rr_rd() {
+                raw_rrs.push(data.to_vec());
             }
             it = item.next();
         }
