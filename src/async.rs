@@ -146,14 +146,13 @@ impl DNSClient {
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
         let mut parsed_response = self.query_from_parsed_query(parsed_query).await?;
         let mut ips = vec![];
-        {
-            let mut it = parsed_response.into_iter_answer();
-            while let Some(item) = it {
-                if let Ok(IpAddr::V4(addr)) = item.rr_ip() {
-                    ips.push(addr);
-                }
-                it = item.next();
+
+        let mut it = parsed_response.into_iter_answer();
+        while let Some(item) = it {
+            if let Ok(IpAddr::V4(addr)) = item.rr_ip() {
+                ips.push(addr);
             }
+            it = item.next();
         }
         Ok(ips)
     }
@@ -168,14 +167,13 @@ impl DNSClient {
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
         let mut parsed_response = self.query_from_parsed_query(parsed_query).await?;
         let mut ips = vec![];
-        {
-            let mut it = parsed_response.into_iter_answer();
-            while let Some(item) = it {
-                if let Ok(IpAddr::V6(addr)) = item.rr_ip() {
-                    ips.push(addr);
-                }
-                it = item.next();
+
+        let mut it = parsed_response.into_iter_answer();
+        while let Some(item) = it {
+            if let Ok(IpAddr::V6(addr)) = item.rr_ip() {
+                ips.push(addr);
             }
+            it = item.next();
         }
         Ok(ips)
     }
@@ -194,6 +192,67 @@ impl DNSClient {
             .chain(ipv6_ips.into_iter().map(|x| IpAddr::from(x)))
             .collect();
         Ok(ips)
+    }
+
+    /// Return TXT records.
+    pub async fn query_txt(&self, name: &str) -> Result<Vec<Vec<u8>>, io::Error> {
+        let parsed_query = dnssector::gen::query(
+            name.as_bytes(),
+            Type::from_string("TXT").unwrap(),
+            Class::from_string("IN").unwrap(),
+        )
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let mut parsed_response = self.query_from_parsed_query(parsed_query).await?;
+        let mut txts: Vec<Vec<u8>> = vec![];
+
+        let mut it = parsed_response.into_iter_answer();
+        while let Some(item) = it {
+            if let Ok(raw) = item.rr_rd() {
+                if let RawRRData::Data(data) = raw {
+                    let mut txt = vec![];
+                    let mut it = data.iter();
+                    while let Some(len) = it.next() {
+                        for _ in 0..*len {
+                            txt.push(*it.next().ok_or(io::Error::new(
+                                io::ErrorKind::InvalidInput,
+                                "Invalid text record",
+                            ))?)
+                        }
+                    }
+                    txts.push(txt);
+                }
+            }
+            it = item.next();
+        }
+        Ok(txts)
+    }
+
+    /// Return the raw record data for the given query type.
+    pub async fn query_rrs_data(
+        &self,
+        name: &str,
+        query_class: &str,
+        query_type: &str,
+    ) -> Result<Vec<Vec<u8>>, io::Error> {
+        let rr_class = Class::from_string(query_class)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let rr_type = Type::from_string(query_type)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let parsed_query = dnssector::gen::query(name.as_bytes(), rr_type, rr_class)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let mut parsed_response = self.query_from_parsed_query(parsed_query).await?;
+        let mut raw_rrs = vec![];
+
+        let mut it = parsed_response.into_iter_answer();
+        while let Some(item) = it {
+            if let Ok(raw) = item.rr_rd() {
+                if let RawRRData::Data(data) = raw {
+                    raw_rrs.push(data.to_vec());
+                }
+            }
+            it = item.next();
+        }
+        Ok(raw_rrs)
     }
 }
 
@@ -244,6 +303,23 @@ mod tests {
         block_on(async {
             let r = dns_client.query_addrs("one.one.one.one").await.unwrap();
             assert!(r.contains(&IpAddr::from(Ipv4Addr::new(1, 1, 1, 1))));
+        })
+    }
+
+    #[test]
+    fn test_query_txt() {
+        use std::str::FromStr;
+
+        let dns_client = DNSClient::new(vec![
+            UpstreamServer::new(SocketAddr::from_str("1.0.0.1:53").unwrap()),
+            UpstreamServer::new(SocketAddr::from_str("1.1.1.1:53").unwrap()),
+        ]);
+        block_on(async {
+            let r = dns_client.query_txt("fastly.com").await.unwrap();
+            assert!(r.iter().any(|txt| {
+                let txt = std::str::from_utf8(txt).unwrap();
+                txt.starts_with("google-site")
+            }))
         })
     }
 }

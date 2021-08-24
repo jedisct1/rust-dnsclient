@@ -182,6 +182,67 @@ impl DNSClient {
             .collect();
         Ok(ips)
     }
+
+    /// Return TXT records.
+    pub fn query_txt(&self, name: &str) -> Result<Vec<Vec<u8>>, io::Error> {
+        let parsed_query = dnssector::gen::query(
+            name.as_bytes(),
+            Type::from_string("TXT").unwrap(),
+            Class::from_string("IN").unwrap(),
+        )
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let mut parsed_response = self.query_from_parsed_query(parsed_query)?;
+        let mut txts: Vec<Vec<u8>> = vec![];
+
+        let mut it = parsed_response.into_iter_answer();
+        while let Some(item) = it {
+            if let Ok(raw) = item.rr_rd() {
+                if let RawRRData::Data(data) = raw {
+                    let mut txt = vec![];
+                    let mut it = data.iter();
+                    while let Some(len) = it.next() {
+                        for _ in 0..*len {
+                            txt.push(*it.next().ok_or(io::Error::new(
+                                io::ErrorKind::InvalidInput,
+                                "Invalid text record",
+                            ))?)
+                        }
+                    }
+                    txts.push(txt);
+                }
+            }
+            it = item.next();
+        }
+        Ok(txts)
+    }
+
+    /// Return the raw record data for the given query type.
+    pub fn query_rrs_data(
+        &self,
+        name: &str,
+        query_class: &str,
+        query_type: &str,
+    ) -> Result<Vec<Vec<u8>>, io::Error> {
+        let rr_class = Class::from_string(query_class)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let rr_type = Type::from_string(query_type)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let parsed_query = dnssector::gen::query(name.as_bytes(), rr_type, rr_class)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        let mut parsed_response = self.query_from_parsed_query(parsed_query)?;
+        let mut raw_rrs = vec![];
+
+        let mut it = parsed_response.into_iter_answer();
+        while let Some(item) = it {
+            if let Ok(raw) = item.rr_rd() {
+                if let RawRRData::Data(data) = raw {
+                    raw_rrs.push(data.to_vec());
+                }
+            }
+            it = item.next();
+        }
+        Ok(raw_rrs)
+    }
 }
 
 #[test]

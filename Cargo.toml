@@ -12,7 +12,7 @@ edition = "2018"
 
 [dependencies]
 async-std = { version = "1.9", optional = true, features = ["unstable"] }
-dnssector = "0.2.6"
+dnssector = "0.2.7"
 rand = "0.8"
 tokio = { version = "1.9.0", optional = true, features = ["full"] }
 
