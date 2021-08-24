@@ -25,6 +25,11 @@ impl DNSClient {
         }
     }
 
+    #[cfg(unix)]
+    pub fn new_with_system_resolvers() -> Result<Self, io::Error> {
+        Ok(DNSClient::new(crate::system::default_resolvers()?))
+    }
+
     pub fn set_timeout(&mut self, timeout: Duration) {
         self.backend.upstream_server_timeout = timeout
     }
@@ -244,10 +249,13 @@ impl DNSClient {
 fn test_query_a() {
     use std::str::FromStr;
 
-    let dns_client = DNSClient::new(vec![
-        UpstreamServer::new(SocketAddr::from_str("1.0.0.1:53").unwrap()),
-        UpstreamServer::new(SocketAddr::from_str("1.1.1.1:53").unwrap()),
-    ]);
+    let upstream_servers = crate::system::default_resolvers().unwrap_or_else(|_| {
+        vec![
+            UpstreamServer::new(SocketAddr::from_str("1.0.0.1:53").unwrap()),
+            UpstreamServer::new(SocketAddr::from_str("1.1.1.1:53").unwrap()),
+        ]
+    });
+    let dns_client = DNSClient::new(upstream_servers);
     let r = dns_client.query_a("one.one.one.one").unwrap();
     assert!(r.contains(&Ipv4Addr::new(1, 1, 1, 1)));
 }

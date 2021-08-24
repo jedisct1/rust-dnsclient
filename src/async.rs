@@ -31,6 +31,11 @@ impl DNSClient {
         }
     }
 
+    #[cfg(unix)]
+    pub fn new_with_system_resolvers() -> Result<Self, io::Error> {
+        Ok(DNSClient::new(crate::system::default_resolvers()?))
+    }
+
     pub fn set_timeout(&mut self, timeout: Duration) {
         self.backend.upstream_server_timeout = timeout
     }
