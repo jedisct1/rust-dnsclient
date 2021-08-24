@@ -1,5 +1,6 @@
 use crate::upstream_server::UpstreamServer;
 use dnssector::constants::DNS_MAX_COMPRESSED_SIZE;
+use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -71,5 +72,9 @@ impl AsyncBackend {
         })
         .await
         .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "Timeout"))?
+    }
+
+    pub async fn join<F1: Future, F2: Future>(&self, f1: F1, f2: F2) -> (F1::Output, F2::Output) {
+        tokio::join!(f1, f2)
     }
 }

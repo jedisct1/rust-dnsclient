@@ -115,6 +115,7 @@ impl DNSClient {
         ))
     }
 
+    /// Send a raw query to the DNS server and return the response.
     pub async fn query_raw(&self, query: &[u8], tid_masking: bool) -> Result<Vec<u8>, io::Error> {
         let mut parsed_query = DNSSector::new(query.to_vec())
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
@@ -135,6 +136,7 @@ impl DNSClient {
         Ok(response)
     }
 
+    /// Return IPv4 addresses.
     pub async fn query_a(&self, name: &str) -> Result<Vec<Ipv4Addr>, io::Error> {
         let parsed_query = dnssector::gen::query(
             name.as_bytes(),
@@ -156,6 +158,7 @@ impl DNSClient {
         Ok(ips)
     }
 
+    /// Return IPv6 addresses.
     pub async fn query_aaaa(&self, name: &str) -> Result<Vec<Ipv6Addr>, io::Error> {
         let parsed_query = dnssector::gen::query(
             name.as_bytes(),
@@ -174,6 +177,22 @@ impl DNSClient {
                 it = item.next();
             }
         }
+        Ok(ips)
+    }
+
+    /// Return both IPv4 and IPv6 addresses, performing both queries simultaneously.
+    pub async fn query_addrs(&self, name: &str) -> Result<Vec<IpAddr>, io::Error> {
+        let futs = self
+            .backend
+            .join(self.query_a(name), self.query_aaaa(name))
+            .await;
+        let ipv4_ips = futs.0?;
+        let ipv6_ips = futs.1?;
+        let ips: Vec<_> = ipv4_ips
+            .into_iter()
+            .map(|x| IpAddr::from(x))
+            .chain(ipv6_ips.into_iter().map(|x| IpAddr::from(x)))
+            .collect();
         Ok(ips)
     }
 }
@@ -211,6 +230,20 @@ mod tests {
         block_on(async {
             let r = dns_client.query_a("one.one.one.one").await.unwrap();
             assert!(r.contains(&Ipv4Addr::new(1, 1, 1, 1)));
+        })
+    }
+
+    #[test]
+    fn test_query_addrs() {
+        use std::str::FromStr;
+
+        let dns_client = DNSClient::new(vec![
+            UpstreamServer::new(SocketAddr::from_str("1.0.0.1:53").unwrap()),
+            UpstreamServer::new(SocketAddr::from_str("1.1.1.1:53").unwrap()),
+        ]);
+        block_on(async {
+            let r = dns_client.query_addrs("one.one.one.one").await.unwrap();
+            assert!(r.contains(&IpAddr::from(Ipv4Addr::new(1, 1, 1, 1))));
         })
     }
 }

@@ -106,6 +106,7 @@ impl DNSClient {
         ))
     }
 
+    /// Send a raw query to the DNS server and return the response.
     pub fn query_raw(&self, query: &[u8], tid_masking: bool) -> Result<Vec<u8>, io::Error> {
         let mut parsed_query = DNSSector::new(query.to_vec())
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
@@ -126,6 +127,7 @@ impl DNSClient {
         Ok(response)
     }
 
+    /// Return IPv4 addresses.
     pub fn query_a(&self, name: &str) -> Result<Vec<Ipv4Addr>, io::Error> {
         let parsed_query = dnssector::gen::query(
             name.as_bytes(),
@@ -147,6 +149,7 @@ impl DNSClient {
         Ok(ips)
     }
 
+    /// Return IPv6 addresses.
     pub fn query_aaaa(&self, name: &str) -> Result<Vec<Ipv6Addr>, io::Error> {
         let parsed_query = dnssector::gen::query(
             name.as_bytes(),
@@ -165,6 +168,18 @@ impl DNSClient {
                 it = item.next();
             }
         }
+        Ok(ips)
+    }
+
+    /// Return both IPv4 and IPv6 addresses.
+    pub async fn query_addrs(&self, name: &str) -> Result<Vec<IpAddr>, io::Error> {
+        let ipv4_ips = self.query_a(name)?;
+        let ipv6_ips = self.query_aaaa(name)?;
+        let ips: Vec<_> = ipv4_ips
+            .into_iter()
+            .map(|x| IpAddr::from(x))
+            .chain(ipv6_ips.into_iter().map(|x| IpAddr::from(x)))
+            .collect();
         Ok(ips)
     }
 }

@@ -2,6 +2,7 @@ use crate::upstream_server::UpstreamServer;
 use async_std::net::{TcpStream, UdpSocket};
 use async_std::prelude::*;
 use dnssector::constants::DNS_MAX_COMPRESSED_SIZE;
+use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -69,5 +70,9 @@ impl AsyncBackend {
             Ok(response)
         })
         .await
+    }
+
+    pub async fn join<F1: Future, F2: Future>(&self, f1: F1, f2: F2) -> (F1::Output, F2::Output) {
+        f1.join(f2).await
     }
 }
