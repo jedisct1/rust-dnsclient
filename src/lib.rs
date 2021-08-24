@@ -1,5 +1,6 @@
 #[cfg(feature = "async")]
 pub mod r#async;
+mod backend;
 pub mod sync;
 mod upstream_server;
 
