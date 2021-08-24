@@ -177,8 +177,8 @@ impl DNSClient {
         let ipv6_ips = self.query_aaaa(name)?;
         let ips: Vec<_> = ipv4_ips
             .into_iter()
-            .map(|x| IpAddr::from(x))
-            .chain(ipv6_ips.into_iter().map(|x| IpAddr::from(x)))
+            .map(IpAddr::from)
+            .chain(ipv6_ips.into_iter().map(IpAddr::from))
             .collect();
         Ok(ips)
     }
@@ -202,10 +202,9 @@ impl DNSClient {
                     let mut it = data.iter();
                     while let Some(len) = it.next() {
                         for _ in 0..*len {
-                            txt.push(*it.next().ok_or(io::Error::new(
-                                io::ErrorKind::InvalidInput,
-                                "Invalid text record",
-                            ))?)
+                            txt.push(*it.next().ok_or_else(|| {
+                                io::Error::new(io::ErrorKind::InvalidInput, "Invalid text record")
+                            })?)
                         }
                     }
                     txts.push(txt);
