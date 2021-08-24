@@ -14,7 +14,9 @@ edition = "2018"
 async-std = { version = "1.9", optional = true }
 dnssector = "0.2.6"
 rand = "0.8"
+tokio = { version = "1.9.0", optional = true, features = ["net", "io-std", "io-util", "fs", "time", "rt-multi-thread", "parking_lot"] }
 
 [features]
 async = [ "async-std" ]
+async-tokio = [ "tokio" ]
 default = [ "async" ]

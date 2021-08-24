@@ -1,4 +1,9 @@
+#[cfg(feature = "async")]
 use crate::backend::async_std::AsyncBackend;
+
+#[cfg(feature = "async-tokio")]
+use crate::backend::async_tokio::AsyncBackend;
+
 use crate::upstream_server::UpstreamServer;
 use dnssector::constants::{Class, Type};
 use dnssector::*;
@@ -173,17 +178,39 @@ impl DNSClient {
     }
 }
 
-#[test]
-fn test_query_a() {
-    use async_std::task;
-    use std::str::FromStr;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::future::Future;
 
-    let dns_client = DNSClient::new(vec![
-        UpstreamServer::new(SocketAddr::from_str("1.0.0.1:53").unwrap()),
-        UpstreamServer::new(SocketAddr::from_str("1.1.1.1:53").unwrap()),
-    ]);
-    task::block_on(async {
-        let r = dns_client.query_a("one.one.one.one").await.unwrap();
-        assert!(r.contains(&Ipv4Addr::new(1, 1, 1, 1)));
-    })
+    #[cfg(feature = "async")]
+    fn block_on<F: Future>(future: F) -> F::Output {
+        use async_std::task;
+        task::block_on(future)
+    }
+
+    #[cfg(feature = "async-tokio")]
+    fn block_on<F: Future>(future: F) -> F::Output {
+        use tokio::runtime;
+        let rt = runtime::Builder::new_current_thread()
+            .enable_time()
+            .enable_io()
+            .build()
+            .unwrap();
+        rt.block_on(future)
+    }
+
+    #[test]
+    fn test_query_a() {
+        use std::str::FromStr;
+
+        let dns_client = DNSClient::new(vec![
+            UpstreamServer::new(SocketAddr::from_str("1.0.0.1:53").unwrap()),
+            UpstreamServer::new(SocketAddr::from_str("1.1.1.1:53").unwrap()),
+        ]);
+        block_on(async {
+            let r = dns_client.query_a("one.one.one.one").await.unwrap();
+            assert!(r.contains(&Ipv4Addr::new(1, 1, 1, 1)));
+        })
+    }
 }
