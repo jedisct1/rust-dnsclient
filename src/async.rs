@@ -283,7 +283,18 @@ impl DNSClient {
                     name.push(b'.');
                 }
                 if let Ok(name) = String::from_utf8(name) {
-                    names.push(name)
+                    match ip {
+                        IpAddr::V4(ip) => {
+                            if self.query_a(&name).await?.contains(ip) {
+                                names.push(name)
+                            }
+                        }
+                        IpAddr::V6(ip) => {
+                            if self.query_aaaa(&name).await?.contains(ip) {
+                                names.push(name)
+                            }
+                        }
+                    };
                 }
             }
             it = item.next();
