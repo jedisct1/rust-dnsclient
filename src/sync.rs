@@ -13,6 +13,7 @@ pub struct DNSClient {
     upstream_servers: Vec<UpstreamServer>,
     local_v4_addr: SocketAddr,
     local_v6_addr: SocketAddr,
+    force_tcp: bool,
 }
 
 impl DNSClient {
@@ -22,6 +23,7 @@ impl DNSClient {
             upstream_servers,
             local_v4_addr: ([0; 4], 0).into(),
             local_v6_addr: ([0; 16], 0).into(),
+            force_tcp: false,
         }
     }
 
@@ -42,6 +44,10 @@ impl DNSClient {
         self.local_v6_addr = addr.into()
     }
 
+    pub fn force_tcp(&mut self, force_tcp: bool) {
+        self.force_tcp = force_tcp;
+    }
+
     fn send_query_to_upstream_server(
         &self,
         upstream_server: &UpstreamServer,
@@ -53,25 +59,27 @@ impl DNSClient {
             SocketAddr::V4(_) => &self.local_v4_addr,
             SocketAddr::V6(_) => &self.local_v6_addr,
         };
-        let mut parsed_response = {
-            let response = self
-                .backend
-                .dns_exchange_udp(local_addr, upstream_server, query)?;
-            DNSSector::new(response)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
-                .parse()
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
+        let response = if self.force_tcp {
+            self.backend
+                .dns_exchange_tcp(local_addr, upstream_server, query)?
+        } else {
+            self.backend
+                .dns_exchange_udp(local_addr, upstream_server, query)?
         };
-        if parsed_response.flags() & DNS_FLAG_TC == DNS_FLAG_TC {
+        let mut parsed_response = DNSSector::new(response)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
+            .parse()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        if !self.force_tcp && parsed_response.flags() & DNS_FLAG_TC == DNS_FLAG_TC {
             parsed_response = {
                 let response = self
                     .backend
-                    .dns_exchange_tcp(local_addr, upstream_server, query)?;
+                    .dns_exchange_tcp(local_addr, upstream_server, query)?
                 DNSSector::new(response)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
                     .parse()
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
-            }
+            };
         }
         if parsed_response.tid() != query_tid || &parsed_response.question() != query_question {
             return Err(io::Error::new(
