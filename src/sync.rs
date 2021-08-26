@@ -74,7 +74,7 @@ impl DNSClient {
             parsed_response = {
                 let response = self
                     .backend
-                    .dns_exchange_tcp(local_addr, upstream_server, query)?
+                    .dns_exchange_tcp(local_addr, upstream_server, query)?;
                 DNSSector::new(response)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?
                     .parse()
