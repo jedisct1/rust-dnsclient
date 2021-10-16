@@ -2,7 +2,7 @@ use crate::backend::sync::SyncBackend;
 use crate::upstream_server::UpstreamServer;
 use dnssector::constants::{Class, Type};
 use dnssector::*;
-use rand::Rng;
+use rand::{seq::SliceRandom, Rng};
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::time::Duration;
@@ -159,6 +159,7 @@ impl DNSClient {
                 it = item.next();
             }
         }
+        ips.shuffle(&mut rand::thread_rng());
         Ok(ips)
     }
 
@@ -181,6 +182,7 @@ impl DNSClient {
                 it = item.next();
             }
         }
+        ips.shuffle(&mut rand::thread_rng());
         Ok(ips)
     }
 
@@ -188,11 +190,12 @@ impl DNSClient {
     pub async fn query_addrs(&self, name: &str) -> Result<Vec<IpAddr>, io::Error> {
         let ipv4_ips = self.query_a(name)?;
         let ipv6_ips = self.query_aaaa(name)?;
-        let ips: Vec<_> = ipv4_ips
+        let mut ips: Vec<_> = ipv4_ips
             .into_iter()
             .map(IpAddr::from)
             .chain(ipv6_ips.into_iter().map(IpAddr::from))
             .collect();
+        ips.shuffle(&mut rand::thread_rng());
         Ok(ips)
     }
 

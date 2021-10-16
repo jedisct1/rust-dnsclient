@@ -7,7 +7,7 @@ use crate::backend::async_tokio::AsyncBackend;
 use crate::upstream_server::UpstreamServer;
 use dnssector::constants::{Class, Type};
 use dnssector::*;
-use rand::Rng;
+use rand::{seq::SliceRandom, Rng};
 use std::io;
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
@@ -170,6 +170,7 @@ impl DNSClient {
             }
             it = item.next();
         }
+        ips.shuffle(&mut rand::thread_rng());
         Ok(ips)
     }
 
@@ -191,6 +192,7 @@ impl DNSClient {
             }
             it = item.next();
         }
+        ips.shuffle(&mut rand::thread_rng());
         Ok(ips)
     }
 
@@ -202,11 +204,12 @@ impl DNSClient {
             .await;
         let ipv4_ips = futs.0?;
         let ipv6_ips = futs.1?;
-        let ips: Vec<_> = ipv4_ips
+        let mut ips: Vec<_> = ipv4_ips
             .into_iter()
             .map(IpAddr::from)
             .chain(ipv6_ips.into_iter().map(IpAddr::from))
             .collect();
+        ips.shuffle(&mut rand::thread_rng());
         Ok(ips)
     }
 
