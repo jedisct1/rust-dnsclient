@@ -187,7 +187,7 @@ impl DNSClient {
     }
 
     /// Return both IPv4 and IPv6 addresses.
-    pub async fn query_addrs(&self, name: &str) -> Result<Vec<IpAddr>, io::Error> {
+    pub fn query_addrs(&self, name: &str) -> Result<Vec<IpAddr>, io::Error> {
         let ipv4_ips = self.query_a(name)?;
         let ipv6_ips = self.query_aaaa(name)?;
         let mut ips: Vec<_> = ipv4_ips
