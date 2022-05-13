@@ -1,8 +1,10 @@
-use crate::upstream_server::UpstreamServer;
-use dnssector::constants::DNS_MAX_COMPRESSED_SIZE;
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, TcpStream, UdpSocket};
 use std::time::Duration;
+
+use dnssector::constants::DNS_MAX_COMPRESSED_SIZE;
+
+use crate::upstream_server::UpstreamServer;
 
 #[derive(Clone, Debug)]
 pub struct SyncBackend {

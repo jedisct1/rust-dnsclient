@@ -1,11 +1,13 @@
-use crate::upstream_server::UpstreamServer;
-use dnssector::constants::DNS_MAX_COMPRESSED_SIZE;
 use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
+
+use dnssector::constants::DNS_MAX_COMPRESSED_SIZE;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
+
+use crate::upstream_server::UpstreamServer;
 
 #[derive(Clone, Debug)]
 pub struct AsyncBackend {

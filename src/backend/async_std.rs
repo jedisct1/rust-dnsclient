@@ -1,11 +1,13 @@
-use crate::upstream_server::UpstreamServer;
-use async_std::net::{TcpStream, UdpSocket};
-use async_std::prelude::*;
-use dnssector::constants::DNS_MAX_COMPRESSED_SIZE;
 use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
+
+use async_std::net::{TcpStream, UdpSocket};
+use async_std::prelude::*;
+use dnssector::constants::DNS_MAX_COMPRESSED_SIZE;
+
+use crate::upstream_server::UpstreamServer;
 
 #[derive(Clone, Debug)]
 pub struct AsyncBackend {

@@ -1,7 +1,8 @@
-use crate::UpstreamServer;
 use std::fs;
 use std::io;
 use std::net::{IpAddr, SocketAddr};
+
+use crate::UpstreamServer;
 
 /// Return the set of default (system) resolvers, by parsing /etc/resolv.conf
 #[cfg(unix)]

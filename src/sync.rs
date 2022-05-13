@@ -1,11 +1,13 @@
-use crate::backend::sync::SyncBackend;
-use crate::upstream_server::UpstreamServer;
-use dnssector::constants::{Class, Type};
-use dnssector::*;
-use rand::{seq::SliceRandom, Rng};
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::time::Duration;
+
+use dnssector::constants::{Class, Type};
+use dnssector::*;
+use rand::{seq::SliceRandom, Rng};
+
+use crate::backend::sync::SyncBackend;
+use crate::upstream_server::UpstreamServer;
 
 #[derive(Clone, Debug)]
 pub struct DNSClient {

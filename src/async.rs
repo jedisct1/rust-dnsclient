@@ -1,17 +1,16 @@
-#[cfg(feature = "async")]
-use crate::backend::async_std::AsyncBackend;
+use std::io;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::time::Duration;
 
-#[cfg(feature = "async-tokio")]
-use crate::backend::async_tokio::AsyncBackend;
-
-use crate::upstream_server::UpstreamServer;
 use dnssector::constants::{Class, Type};
 use dnssector::*;
 use rand::{seq::SliceRandom, Rng};
-use std::io;
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
-use std::time::Duration;
+#[cfg(feature = "async")]
+use crate::backend::async_std::AsyncBackend;
+#[cfg(feature = "async-tokio")]
+use crate::backend::async_tokio::AsyncBackend;
+use crate::upstream_server::UpstreamServer;
 
 #[derive(Clone, Debug)]
 pub struct DNSClient {
@@ -196,7 +195,8 @@ impl DNSClient {
         Ok(ips)
     }
 
-    /// Return both IPv4 and IPv6 addresses, performing both queries simultaneously.
+    /// Return both IPv4 and IPv6 addresses, performing both queries
+    /// simultaneously.
     pub async fn query_addrs(&self, name: &str) -> Result<Vec<IpAddr>, io::Error> {
         let futs = self
             .backend
@@ -349,8 +349,9 @@ impl DNSClient {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::future::Future;
+
+    use super::*;
 
     #[cfg(feature = "async")]
     fn block_on<F: Future>(future: F) -> F::Output {
