@@ -8,6 +8,12 @@ mod upstream_server;
 
 pub use crate::upstream_server::*;
 
+#[cfg(all(feature = "async", feature = "async-tokio"))]
+compile_error!(
+    "Multiple, incompatible backends have been enabled. Use `default-features = false` in order \
+     to disable the default backend, and only pick the one you need."
+);
+
 pub mod reexports {
     #[cfg(feature = "async")]
     pub use async_std;
