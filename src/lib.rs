@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 #[cfg(any(feature = "async", feature = "async-tokio"))]
 pub mod r#async;
 mod backend;
