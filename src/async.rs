@@ -139,8 +139,8 @@ impl DNSClient {
         let mut tid = 0;
         if tid_masking {
             tid = parsed_query.tid();
-            let mut rnd = rand::thread_rng();
-            let masked_tid: u16 = rnd.gen();
+            let mut rnd = rand::rng();
+            let masked_tid: u16 = rnd.random();
             parsed_query.set_tid(masked_tid);
         }
         let mut parsed_response = self.query_from_parsed_query(parsed_query).await?;
@@ -169,7 +169,7 @@ impl DNSClient {
             }
             it = item.next();
         }
-        ips.shuffle(&mut rand::thread_rng());
+        ips.shuffle(&mut rand::rng());
         Ok(ips)
     }
 
@@ -191,7 +191,7 @@ impl DNSClient {
             }
             it = item.next();
         }
-        ips.shuffle(&mut rand::thread_rng());
+        ips.shuffle(&mut rand::rng());
         Ok(ips)
     }
 
@@ -209,7 +209,7 @@ impl DNSClient {
             .map(IpAddr::from)
             .chain(ipv6_ips.into_iter().map(IpAddr::from))
             .collect();
-        ips.shuffle(&mut rand::thread_rng());
+        ips.shuffle(&mut rand::rng());
         Ok(ips)
     }
 
