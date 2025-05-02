@@ -10,11 +10,8 @@ mod upstream_server;
 
 pub use crate::upstream_server::*;
 
-#[cfg(all(feature = "async-smol", feature = "async-tokio"))]
-compile_error!(
-    "Multiple, incompatible backends have been enabled. Use `default-features = false` in order \
-     to disable the default backend, and only pick the one you need."
-);
+// If async-smol is specified as a feature, it will be used even if tokio is available via default features
+// We avoid compiling modules that won't be used
 
 pub mod reexports {
     pub use dnssector;
@@ -23,6 +20,6 @@ pub mod reexports {
     pub use rand;
     #[cfg(feature = "async-smol")]
     pub use smol;
-    #[cfg(feature = "async-tokio")]
+    #[cfg(all(feature = "async-tokio", not(feature = "async-smol")))]
     pub use tokio;
 }

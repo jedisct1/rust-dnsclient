@@ -6,9 +6,11 @@ use dnssector::constants::{Class, Type};
 use dnssector::*;
 use rand::{seq::SliceRandom, Rng};
 
+// When both backends are enabled but async-smol is explicitly specified, use smol
+// otherwise use tokio (the default)
 #[cfg(feature = "async-smol")]
 use crate::backend::async_smol::AsyncBackend;
-#[cfg(feature = "async-tokio")]
+#[cfg(all(feature = "async-tokio", not(feature = "async-smol")))]
 use crate::backend::async_tokio::AsyncBackend;
 use crate::upstream_server::UpstreamServer;
 
@@ -358,7 +360,7 @@ mod tests {
         smol::block_on(future)
     }
 
-    #[cfg(feature = "async-tokio")]
+    #[cfg(all(feature = "async-tokio", not(feature = "async-smol")))]
     fn block_on<F: Future>(future: F) -> F::Output {
         use tokio::runtime;
         let rt = runtime::Builder::new_current_thread()

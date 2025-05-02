@@ -21,3 +21,4 @@ tokio = { version = "1.44.2", optional = true, features = ["full"] }
 async-smol = [ "smol", "futures-lite" ]
 async-tokio = [ "tokio" ]
 default = [ "async-tokio" ]
+# If async-smol is specified as a feature, it will be used even if async-tokio is also enabled
