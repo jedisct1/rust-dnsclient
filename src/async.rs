@@ -6,8 +6,8 @@ use dnssector::constants::{Class, Type};
 use dnssector::*;
 use rand::{seq::SliceRandom, Rng};
 
-#[cfg(feature = "async")]
-use crate::backend::async_std::AsyncBackend;
+#[cfg(feature = "async-smol")]
+use crate::backend::async_smol::AsyncBackend;
 #[cfg(feature = "async-tokio")]
 use crate::backend::async_tokio::AsyncBackend;
 use crate::upstream_server::UpstreamServer;
@@ -353,10 +353,9 @@ mod tests {
 
     use super::*;
 
-    #[cfg(feature = "async")]
+    #[cfg(feature = "async-smol")]
     fn block_on<F: Future>(future: F) -> F::Output {
-        use async_std::task;
-        task::block_on(future)
+        smol::block_on(future)
     }
 
     #[cfg(feature = "async-tokio")]
