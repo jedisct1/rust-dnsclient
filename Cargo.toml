@@ -1,6 +1,6 @@
 [package]
 name = "dnsclient"
-version = "0.2.2"
+version = "0.2.3"
 description = "DNS client and stub resolver with synchronous and async Tokio or Smol APIs, configurable upstream servers, and automatic UDP-to-TCP fallback."
 authors = ["Frank Denis <github@pureftpd.org>"]
 keywords = ["dns", "client", "resolver", "async", "tokio"]
@@ -11,11 +11,11 @@ categories = ["os::unix-apis"]
 edition = "2018"
 
 [dependencies]
-smol = { version = "2.0.0", optional = true }
-futures-lite = { version = "2.2.0", optional = true }
+smol = { version = "2.0.2", optional = true }
+futures-lite = { version = "2.6.1", optional = true }
 dnssector = "0.2.14"
-rand = "0.9.1"
-tokio = { version = "1.44.2", optional = true, features = ["full"] }
+rand = "0.9.5"
+tokio = { version = "1.53.1", optional = true, features = ["full"] }
 
 [features]
 async-smol = [ "smol", "futures-lite" ]
