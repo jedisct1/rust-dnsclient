@@ -1,9 +1,9 @@
 [package]
 name = "dnsclient"
 version = "0.2.2"
-description = "A small, simple and secure DNS client library"
+description = "DNS client and stub resolver with synchronous and async Tokio or Smol APIs, configurable upstream servers, and automatic UDP-to-TCP fallback."
 authors = ["Frank Denis <github@pureftpd.org>"]
-keywords = ["dns", "client"]
+keywords = ["dns", "client", "resolver", "async", "tokio"]
 license = "ISC"
 homepage = "https://github.com/jedisct1/rust-dnsclient"
 repository = "https://github.com/jedisct1/rust-dnsclient"
